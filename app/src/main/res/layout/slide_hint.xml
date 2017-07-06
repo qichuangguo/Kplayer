@@ -4,16 +4,19 @@
     android:layout_width="100dp"
     android:layout_height="30dp"
     android:background="@drawable/shape_corner"
-    android:gravity="center">
+    android:gravity="center"
+    android:layout_centerInParent="true">
 
     <ImageView
-
+        android:id="@+id/iv_ico"
         android:layout_width="0dp"
         android:layout_weight="1"
         android:layout_height="wrap_content"
         android:src="@drawable/ic_volume_up_white_18dp"/>
 
     <TextView
+        android:id="@+id/tv_name"
+        android:layout_marginRight="10dp"
         android:gravity="center"
         android:layout_width="0dp"
         android:layout_weight="1"

@@ -11,6 +11,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.GestureDetector;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.OrientationEventListener;
 import android.view.Surface;
@@ -18,9 +19,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.MediaController;
 import android.widget.TextView;
 
 import com.android.cgcxy.kplayer.R;
+import com.android.cgcxy.widget.media.AndroidMediaController;
 import com.android.cgcxy.widget.media.IRenderView;
 import com.android.cgcxy.widget.media.IjkVideoView;
 
@@ -52,6 +56,7 @@ public class PlayerManager {
      * 不剪裁,非等比例拉伸画面到4:3,并完全显示在View中
      */
     public static final String SCALETYPE_4_3="4:3";
+    private static final String TAG = "PlayerManager";
 
     /**
      * 状态常量
@@ -87,6 +92,10 @@ public class PlayerManager {
 
     private OrientationEventListener orientationEventListener;
     private PlayerStateListener playerStateListener;
+    private final ImageView imageView;
+    private final TextView textView;
+    private final View slide_hint;
+    private final ImageView iv_play;
 
     public void setPlayerStateListener(PlayerStateListener playerStateListener) {
         this.playerStateListener = playerStateListener;
@@ -136,6 +145,16 @@ public class PlayerManager {
         screenWidthPixels = activity.getResources().getDisplayMetrics().widthPixels;
 
         videoView = (IjkVideoView) activity.findViewById(R.id.video_view);
+
+        ClickListener clickListener = new ClickListener();
+
+        slide_hint = activity.findViewById(R.id.slide_hint);
+        imageView = (ImageView) activity.findViewById(R.id.iv_ico);
+        textView = (TextView) activity.findViewById(R.id.tv_name);
+        slide_hint.setVisibility(View.GONE);
+        iv_play = (ImageView) activity.findViewById(R.id.iv_play);
+        iv_play.setOnClickListener(clickListener);
+
         videoView.setOnCompletionListener(new IMediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(IMediaPlayer mp) {
@@ -154,16 +173,18 @@ public class PlayerManager {
         videoView.setOnInfoListener(new IMediaPlayer.OnInfoListener() {
             @Override
             public boolean onInfo(IMediaPlayer mp, int what, int extra) {
+                Log.i(TAG, "MEDIA_INFO_BUFFERING_END: "+extra);
                 switch (what) {
                     case IMediaPlayer.MEDIA_INFO_BUFFERING_START:
                         statusChange(STATUS_LOADING);
                         break;
                     case IMediaPlayer.MEDIA_INFO_BUFFERING_END:
+
                         statusChange(STATUS_PLAYING);
                         break;
                     case IMediaPlayer.MEDIA_INFO_NETWORK_BANDWIDTH:
                         //显示下载速度
-//                      Toast.show("download rate:" + extra);
+                        Log.i(TAG, "onInfo: "+extra);
                         break;
                     case IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
                         statusChange(STATUS_PLAYING);
@@ -178,8 +199,6 @@ public class PlayerManager {
         mMaxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         gestureDetector = new GestureDetector(activity, new PlayerGestureListener());
 
-
-
         if (fullScreenOnly) {
             activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         }
@@ -190,10 +209,29 @@ public class PlayerManager {
         }
     }
 
+    public class ClickListener implements View.OnClickListener {
+
+        @Override
+        public void onClick(View v) {
+            int id = v.getId();
+            if (id==R.id.iv_play){
+                if (videoView.getCurrentState()==videoView.STATE_PAUSED){
+                    videoView.start();
+                    iv_play.setImageResource(R.drawable.ic_play_circle_filled_white_white_48dp);
+
+                }else if(videoView.getCurrentState()==videoView.STATE_PLAYING){
+                    iv_play.setImageResource(R.drawable.ic_pause_circle_filled_white_48dp);
+                    videoView.pause();
+                }
+            }
+        }
+    }
+
     private void statusChange(int newStatus) {
         status = newStatus;
         if (!isLive && newStatus==STATUS_COMPLETED) {
             DebugLog.d("statusChange STATUS_COMPLETED...");
+            iv_play.setImageResource(R.drawable.ic_pause_circle_filled_white_48dp);
             if (playerStateListener != null){
                 playerStateListener.onComplete();
             }
@@ -328,23 +366,26 @@ public class PlayerManager {
      * @param percent
      */
     private void onVolumeSlide(float percent) {
-        Log.i("chuangguo.qi", "onVolumeSlide: "+percent);
+
         if (volume == -1) {
             volume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
             if (volume < 0)
                 volume = 0;
         }
-        int index = (int) (percent * mMaxVolume) + volume;
+        int index = (int) (percent * mMaxVolume*1/10) + volume;
         if (index > mMaxVolume) {
             index = mMaxVolume;
         } else if (index < 0){
             index = 0;
         }
+
+        volume=index;
         // 变更声音
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0);
         // 变更进度条
         int i = (int) (index * 1.0 / mMaxVolume * 100);
         String s = i + "%";
+        setLuminanceOrVolume(View.VISIBLE,R.drawable.ic_volume_up_white_18dp,s+"");
         if (i == 0) {
             s = "off";
         }
@@ -377,6 +418,7 @@ public class PlayerManager {
      * @param percent
      */
     private void onBrightnessSlide(float percent) {
+
         if (brightness < 0) {
             brightness = activity.getWindow().getAttributes().screenBrightness;
             if (brightness <= 0.00f){
@@ -387,12 +429,15 @@ public class PlayerManager {
         }
         DebugLog.d("brightness:"+brightness+",percent:"+ percent);
         WindowManager.LayoutParams lpa = activity.getWindow().getAttributes();
-        lpa.screenBrightness = brightness + percent;
+        lpa.screenBrightness = (brightness + percent*1/10);
         if (lpa.screenBrightness > 1.0f){
             lpa.screenBrightness = 1.0f;
         }else if (lpa.screenBrightness < 0.01f){
-            lpa.screenBrightness = 0.01f;
+            lpa.screenBrightness = 0.00f;
         }
+        brightness= lpa.screenBrightness;
+        setLuminanceOrVolume(View.VISIBLE,R.drawable.ic_wb_sunny_white_24dp,(int)(lpa.screenBrightness*100)+"%");
+        Log.i(TAG, "onBrightnessSlide: "+(int)(lpa.screenBrightness*100));
         activity.getWindow().setAttributes(lpa);
     }
 
@@ -594,6 +639,7 @@ public class PlayerManager {
             return super.onDown(e);
         }
 
+
         /**
          * 滑动
          */
@@ -625,9 +671,17 @@ public class PlayerManager {
             return super.onScroll(e1, e2, distanceX, distanceY);
         }
 
+
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
+            System.out.println("==onSingleTapUp===");
             return true;
+        }
+
+        @Override
+        public boolean onSingleTapConfirmed(MotionEvent e) {
+            Log.i(TAG, "onSingleTapConfirmed: ");
+            return super.onSingleTapConfirmed(e);
         }
     }
 
@@ -689,6 +743,15 @@ public class PlayerManager {
         this.onControlPanelVisibilityChangeListener = listener;
         return this;
     }
+
+    public void setLuminanceOrVolume(int i,int imgId,String tv_name){
+        slide_hint.setVisibility(i);
+        if (imgId!=0) {
+            imageView.setImageResource(imgId);
+            textView.setText(tv_name);
+        }
+    }
+
 
     /**
      * set is live (can't seek forward)

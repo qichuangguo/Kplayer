@@ -5,10 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="com.android.cgcxy.kplayer.MainActivity">
-<com.android.cgcxy.widget.media.IjkVideoView
-    android:id="@+id/video_view"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
-</com.android.cgcxy.widget.media.IjkVideoView>
+
+    <include
+        layout="@layout/ijk_videoview"></include>
 
 </RelativeLayout>

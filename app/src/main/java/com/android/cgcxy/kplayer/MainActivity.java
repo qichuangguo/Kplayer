@@ -5,6 +5,7 @@ import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MotionEvent;
+import android.view.View;
 
 import com.android.cgcxy.common.PlayerManager;
 import com.android.cgcxy.widget.media.IjkVideoView;
@@ -20,27 +21,30 @@ public class MainActivity extends AppCompatActivity implements PlayerManager.Pla
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        String path = "http://9890.vod.myqcloud.com/9890_4e292f9a3dd011e6b4078980237cc3d3.f20.mp4";
-        String path2 = Environment.getExternalStorageDirectory().getPath()+ File.separator+"aaa/111.mp4";
+       String path = "http://183.207.255.190:80/live/program/live/hnws/1300000/mnf.m3u8";
+        //String path2 = Environment.getExternalStorageDirectory().getPath()+ File.separator+"aaa/111.mp4";
         /*IjkVideoView videoView= (IjkVideoView) findViewById(R.id.video_view);
         videoView.setVideoURI(Uri.parse(path));
         videoView.start();*/
 
         player = new PlayerManager(this);
         player.setFullScreenOnly(true);
-        player.setScaleType(PlayerManager.SCALETYPE_FILLPARENT);
+        player.setScaleType(PlayerManager.SCALETYPE_FITXY);
         player.playInFullScreen(true);
         player.setPlayerStateListener(this);
-        //player.play(path2);
-        System.out.println("==path2===="+path2+"-------"+new File(path2).exists());
-        player.setPath(path2);
-        player.start();
+        player.play(path);
+       // System.out.println("==path2===="+path2+"-------"+new File(path2).exists());
+       // player.setPath(path);
+//        player.start();
 
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         player.gestureDetector.onTouchEvent(event);
+        if (event.getAction()==MotionEvent.ACTION_UP){
+            player.setLuminanceOrVolume(View.GONE,0,null);
+        }
         return super.onTouchEvent(event);
     }
 
